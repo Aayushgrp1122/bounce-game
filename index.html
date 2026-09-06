@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Bounce Universe</title>
+<meta name="description" content="Bounce Universe — a 3D physics platformer across six worlds. Roll, jump, collect, survive." />
+<meta name="theme-color" content="#0a0c16" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="assets/icon-192.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- ============ LOADING ============ -->
+  <section class="screen active" data-screen="loading" id="loading">
+    <div class="loading-orb"></div>
+    <div class="loading-bar-track"><div id="loadingBar"></div></div>
+    <div class="loading-label">LOADING BOUNCE UNIVERSE…</div>
+  </section>
+
+  <!-- ============ SPLASH ============ -->
+  <section class="screen" data-screen="splash" id="splash">
+    <div class="splash-logo display">BOUNCE UNIVERSE</div>
+    <div class="splash-tag">six worlds. one ball. zero brakes.</div>
+    <button class="btn-primary" id="splashStartBtn">Tap to Start</button>
+  </section>
+
+  <!-- ============ TUTORIAL ============ -->
+  <section class="screen" data-screen="tutorial" id="tutorial">
+    <div class="tut-step">
+      <div class="tut-icon">🕹️</div>
+      <h2>How to play</h2>
+      <p>Use the joystick (or WASD / arrow keys) to roll your ball. Tap the jump button (or Space) to hop across gaps.</p>
+      <p>Collect <b>coins</b> for currency and <b>energy orbs</b> — gather 15 orbs to unlock the <b>double jump</b>.</p>
+      <p>Avoid enemies, lasers and hazards. Reach the glowing <b>portal</b> to finish the level.</p>
+    </div>
+    <button class="btn-primary" id="tutorialDoneBtn">Let's Go</button>
+  </section>
+
+  <!-- ============ HOME ============ -->
+  <section class="screen" data-screen="home" id="home">
+    <div class="home-topbar">
+      <div class="brand display">BOUNCE<span style="color:var(--cyan)">UNIVERSE</span></div>
+      <div style="display:flex; gap:8px;">
+        <div class="stat-pill">🪙 <span id="homeCoins">0</span></div>
+      </div>
+    </div>
+
+    <div class="player-card">
+      <div class="player-row">
+        <div><b id="homePlayerName">Player</b><div style="font-size:11px;color:var(--text-1)">Level <span id="homeLevel">1</span></div></div>
+      </div>
+      <div class="xp-track"><div id="homeXpBar" style="width:0%"></div></div>
+    </div>
+
+    <div id="dailyBanner">
+      <div>
+        <div style="font-weight:700; font-size:13px;">Daily Reward</div>
+        <div style="font-size:11px; color:var(--text-1);">Streak: <span id="dailyStreak">0</span> days</div>
+      </div>
+      <button id="dailyClaimBtn">Claim</button>
+    </div>
+
+    <div class="menu-grid">
+      <button class="menu-tile wide accent" data-nav="worlds"><span class="tile-icon">🌍</span>Story Mode<span style="font-weight:400;font-size:12px;color:var(--text-1)">Play through 6 worlds</span></button>
+      <button class="menu-tile" id="playEndlessBtn"><span class="tile-icon">♾️</span>Endless</button>
+      <button class="menu-tile" data-nav="shop"><span class="tile-icon">🛍️</span>Shop</button>
+      <button class="menu-tile" data-nav="achievements"><span class="tile-icon">🏆</span>Achievements</button>
+      <button class="menu-tile" data-nav="leaderboard"><span class="tile-icon">📊</span>Leaderboard</button>
+      <button class="menu-tile" data-nav="settings"><span class="tile-icon">⚙️</span>Settings</button>
+      <button class="menu-tile" data-info="about" data-nav="info"><span class="tile-icon">ℹ️</span>About</button>
+    </div>
+  </section>
+
+  <!-- ============ WORLDS ============ -->
+  <section class="screen" data-screen="worlds" id="worlds">
+    <div class="screen-header">
+      <button class="back-btn" data-nav="home">← Home</button>
+      <div class="screen-title" style="margin:0;">Worlds</div>
+      <div style="width:60px"></div>
+    </div>
+    <div id="worldsList"></div>
+  </section>
+
+  <!-- ============ LEVEL DETAIL ============ -->
+  <section class="screen" data-screen="levelDetail" id="levelDetail">
+    <div class="detail-card">
+      <h2 id="levelDetailTitle">World · Level</h2>
+      <div class="detail-stars" id="levelDetailStars">☆☆☆</div>
+      <div class="detail-row"><span>Best Time</span><span id="levelDetailBest">—</span></div>
+      <div class="stack">
+        <button class="btn-mode" id="levelPlayStoryBtn">▶ Play</button>
+        <button class="btn-mode time" id="levelPlayTimeBtn">⏱ Time Challenge</button>
+        <button class="btn-mode hardcore" id="levelPlayHardcoreBtn">💀 Hardcore (1 hit = fail)</button>
+      </div>
+      <button class="back-btn" id="levelDetailBack" style="margin-top:14px;width:100%;">← Back</button>
+    </div>
+  </section>
+
+  <!-- ============ SHOP ============ -->
+  <section class="screen" data-screen="shop" id="shop">
+    <div class="screen-header">
+      <button class="back-btn" data-nav="home">← Home</button>
+      <div class="screen-title" style="margin:0;">Shop</div>
+      <div class="stat-pill">🪙 <span id="shopCoins">0</span></div>
+    </div>
+    <div id="shopList"></div>
+  </section>
+
+  <!-- ============ ACHIEVEMENTS ============ -->
+  <section class="screen" data-screen="achievements" id="achievements">
+    <div class="screen-header">
+      <button class="back-btn" data-nav="home">← Home</button>
+      <div class="screen-title" style="margin:0;">Achievements</div>
+      <div style="width:60px"></div>
+    </div>
+    <div id="achievementsList"></div>
+  </section>
+
+  <!-- ============ LEADERBOARD ============ -->
+  <section class="screen" data-screen="leaderboard" id="leaderboard">
+    <div class="screen-header">
+      <button class="back-btn" data-nav="home">← Home</button>
+      <div class="screen-title" style="margin:0;">Leaderboard</div>
+      <div style="width:60px"></div>
+    </div>
+    <select id="lbLevelSelect"></select>
+    <table>
+      <thead><tr><th>#</th><th>Name</th><th>Time</th><th>Coins</th></tr></thead>
+      <tbody id="lbTableBody"></tbody>
+    </table>
+    <p style="font-size:11px;color:var(--text-2);margin-top:14px;">Local leaderboard, stored on this device. Structure is ready to sync with an online backend in a future update.</p>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="screen" data-screen="settings" id="settings">
+    <div class="screen-header">
+      <button class="back-btn" data-nav="home">← Home</button>
+      <div class="screen-title" style="margin:0;">Settings</div>
+      <div style="width:60px"></div>
+    </div>
+    <div class="settings-row"><label>Player Name</label><input type="text" id="settingName" maxlength="16" /></div>
+    <div class="settings-row"><label>Graphics Quality</label>
+      <select id="settingGraphics"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
+    </div>
+    <div class="settings-row"><label>Sound Effects</label><input type="range" id="settingSfx" min="0" max="100" /></div>
+    <div class="settings-row"><label>Music Volume</label><input type="range" id="settingMusic" min="0" max="100" /></div>
+    <div class="settings-row"><label>Touch Sensitivity</label><input type="range" id="settingSensitivity" min="10" max="100" /></div>
+    <button class="btn-danger" id="resetSaveBtn">Erase Save Data</button>
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button class="back-btn" data-info="privacy" data-nav="info" style="flex:1;">Privacy Policy</button>
+      <button class="back-btn" data-info="disclaimer" data-nav="info" style="flex:1;">Disclaimer</button>
+    </div>
+    <button class="back-btn" data-info="contact" data-nav="info" style="margin-top:10px;">Contact Support</button>
+  </section>
+
+  <!-- ============ INFO (about/privacy/disclaimer/contact) ============ -->
+  <section class="screen" data-screen="info" id="info">
+    <div class="screen-header">
+      <button class="back-btn" id="infoBack">← Back</button>
+      <div class="screen-title" style="margin:0;" id="infoTitle">Info</div>
+      <div style="width:60px"></div>
+    </div>
+    <p id="infoBody"></p>
+  </section>
+
+  <!-- ============ PLAY (game canvas overlay) ============ -->
+  <section class="screen" data-screen="play" id="play">
+    <div id="hud">
+      <div class="hud-left">
+        <div class="hud-chip">🪙 <span id="hudCoins">0</span></div>
+        <div class="hud-chip">⏱ <span id="hudTime">0:00.00</span></div>
+      </div>
+      <div class="hud-left" style="align-items:center; text-align:center;">
+        <div id="hudLevelName">Level</div>
+        <div id="hudMode"></div>
+      </div>
+      <div class="hud-right">
+        <button id="pauseBtn">⏸</button>
+        <div class="hud-chip" id="hudDoubleJump">⤴ x2</div>
+      </div>
+    </div>
+    <div id="hudPowerups"></div>
+
+    <div id="touchControls">
+      <div id="joystick"><div id="joystickKnob"></div></div>
+      <button id="jumpBtn">JUMP</button>
+    </div>
+
+    <div id="pauseOverlay">
+      <div class="pause-card">
+        <h2>Paused</h2>
+        <div class="stack">
+          <button class="btn-primary" id="resumeBtn">Resume</button>
+          <button class="btn-secondary" id="pauseRestartBtn">Restart Level</button>
+          <button class="btn-secondary" id="pauseQuitBtn">Quit to Worlds</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEVEL COMPLETE ============ -->
+  <section class="screen" data-screen="levelComplete" id="levelComplete">
+    <div class="result-card">
+      <h2 id="resultTitle">Level Complete!</h2>
+      <div id="resultStars">★★★</div>
+      <div class="result-stats">
+        <div><b id="resultTime">0:00</b>Time</div>
+        <div><b id="resultCoins">0</b>Coins</div>
+        <div><b id="resultXp">0</b>XP</div>
+      </div>
+      <div class="stack">
+        <button class="btn-primary" id="resultNextBtn">Next Level</button>
+        <button class="btn-secondary" id="resultRetryBtn">Retry</button>
+        <button class="btn-secondary" id="resultMenuBtn">World Map</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEVEL FAIL (hardcore) ============ -->
+  <section class="screen" data-screen="levelFail" id="levelFail">
+    <div class="result-card">
+      <div class="fail-icon">💀</div>
+      <h2>Run Failed</h2>
+      <p id="failReason" style="color:var(--text-1); font-size:13px;"></p>
+      <div class="stack">
+        <button class="btn-primary" id="failRetryBtn">Try Again</button>
+        <button class="btn-secondary" id="failMenuBtn">World Map</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="toastLayer"></div>
+</div>
+
+<script type="module" src="ui.js"></script>
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+    });
+  }
+</script>
+</body>
+</html>
