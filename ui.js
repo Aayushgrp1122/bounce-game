@@ -59,9 +59,42 @@ window.addEventListener('load', ()=>{
 $('#splashStartBtn').addEventListener('click', ()=>{
   AUDIO.ensure(); AUDIO.click();
   if(SAVE.settings.music>0) AUDIO.startMusic();
+  requestLandscape();
   if(!SAVE.tutorialSeen){ showScreen('tutorial'); } else { showScreen('home'); }
   refreshDailyBanner();
 });
+
+/* ------------------------------ landscape-only guard --------------------------- */
+
+async function requestLandscape(){
+  try{ if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }catch(e){ /* user gesture required / unsupported — safe to ignore */ }
+  try{ if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); }catch(e){ /* only guaranteed inside an installed PWA — the rotate overlay covers the fallback */ }
+}
+function checkOrientation(){
+  const portrait = window.innerHeight > window.innerWidth;
+  $('#rotateOverlay').classList.toggle('active', portrait);
+}
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', checkOrientation);
+checkOrientation();
+
+/* ------------------------------ PWA install prompt ------------------------------ */
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  $('#installBtn').style.display = 'flex';
+});
+$('#installBtn').addEventListener('click', async ()=>{
+  if(!deferredInstallPrompt) return;
+  AUDIO.click();
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  $('#installBtn').style.display = 'none';
+});
+window.addEventListener('appinstalled', ()=>{ $('#installBtn').style.display = 'none'; showToast('Installed! Launch from your home screen anytime.'); });
 
 $('#tutorialDoneBtn').addEventListener('click', ()=>{
   SAVE.tutorialSeen = true; persistSave();

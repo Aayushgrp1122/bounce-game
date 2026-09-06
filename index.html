@@ -48,7 +48,8 @@
   <section class="screen" data-screen="home" id="home">
     <div class="home-topbar">
       <div class="brand display">BOUNCE<span style="color:var(--cyan)">UNIVERSE</span></div>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button id="installBtn">⬇ Install</button>
         <div class="stat-pill">🪙 <span id="homeCoins">0</span></div>
       </div>
     </div>
@@ -238,6 +239,13 @@
   </section>
 
   <div id="toastLayer"></div>
+
+  <!-- ============ ROTATE-DEVICE GUARD (game is landscape-only) ============ -->
+  <div id="rotateOverlay">
+    <div class="rotate-icon">🔄</div>
+    <h2 style="margin:0;">Rotate Your Device</h2>
+    <p>Bounce Universe plays best in landscape. Please turn your phone sideways to continue.</p>
+  </div>
 </div>
 
 <script type="module" src="ui.js"></script>

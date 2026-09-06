@@ -207,6 +207,19 @@ th{ color:var(--text-2); font-size:11px; text-transform:uppercase; letter-spacin
 /* scrollbars minimal */
 ::-webkit-scrollbar{ width:0; height:0; }
 
+/* ---------------- rotate-device overlay (landscape-only game) ---------------- */
+#rotateOverlay{
+  position:fixed; inset:0; z-index:9999; display:none; align-items:center; justify-content:center;
+  flex-direction:column; gap:16px; text-align:center; background:var(--bg-0); padding:24px;
+}
+#rotateOverlay.active{ display:flex; }
+.rotate-icon{ font-size:52px; animation: rotate-hint 1.6s ease-in-out infinite; }
+@keyframes rotate-hint{ 0%,100%{ transform:rotate(0deg);} 50%{ transform:rotate(-90deg);} }
+#rotateOverlay p{ color:var(--text-1); font-size:14px; max-width:280px; }
+
+/* install-app pill */
+#installBtn{ display:none; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--cyan); color:var(--cyan); border-radius:999px; padding:7px 14px; font-size:12px; font-weight:700; }
+
 /* landscape tightening on short screens */
 @media (max-height:460px){
   .menu-grid{ grid-template-columns:1fr 1fr 1fr; }

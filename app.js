@@ -21,12 +21,12 @@ const JUMP_VELOCITY = 9.2;
 const DOUBLE_JUMP_VELOCITY = 7.6;
 
 const WORLDS = [
-  { id:'green-valley', name:'Green Valley', sky:0x8fd3f4, fog:0xbfe9ff, ground:0x3fae5a, accent:0x6fe08a, platform:0x4caf62, ambient:0x88c9ff, dir:0xffffff, fogDensity:0.012 },
-  { id:'desert-storm', name:'Desert Storm', sky:0xf6c877, fog:0xf0b25a, ground:0xd9a441, accent:0xffdd88, platform:0xd8a24a, ambient:0xffcf8a, dir:0xfff2d0, fogDensity:0.016 },
-  { id:'ice-kingdom', name:'Ice Kingdom', sky:0xdcefff, fog:0xeaf6ff, ground:0x9fd4ec, accent:0xbdf3ff, platform:0x8fc9e8, ambient:0xcdeeff, dir:0xffffff, fogDensity:0.014, slippery:true },
-  { id:'lava-core', name:'Lava Core', sky:0x2a0a08, fog:0x2a0a08, ground:0x3b1410, accent:0xff5a1f, platform:0x4a2018, ambient:0xff8a4a, dir:0xffb27a, fogDensity:0.03 },
-  { id:'cyber-city', name:'Cyber City', sky:0x0a0a1a, fog:0x0a0a1a, ground:0x14142a, accent:0x00e5ff, platform:0x1c1c3a, ambient:0x8a4aff, dir:0x00e5ff, fogDensity:0.028 },
-  { id:'space-station', name:'Space Station', sky:0x000000, fog:0x000000, ground:0x2a2a33, accent:0xffffff, platform:0x3a3a44, ambient:0x7a8aff, dir:0xffffff, fogDensity:0.006, lowGravity:true },
+  { id:'green-valley', name:'Green Valley', sky:0x8fd3f4, skyBottom:0xdff7c8, fog:0xbfe9ff, ground:0x3fae5a, accent:0x6fe08a, platform:0x4caf62, ambient:0x88c9ff, dir:0xffffff, fogDensity:0.012, decor:'hills' },
+  { id:'desert-storm', name:'Desert Storm', sky:0xf6c877, skyBottom:0xffe6b0, fog:0xf0b25a, ground:0xd9a441, accent:0xffdd88, platform:0xd8a24a, ambient:0xffcf8a, dir:0xfff2d0, fogDensity:0.016, decor:'dunes' },
+  { id:'ice-kingdom', name:'Ice Kingdom', sky:0xdcefff, skyBottom:0xffffff, fog:0xeaf6ff, ground:0x9fd4ec, accent:0xbdf3ff, platform:0x8fc9e8, ambient:0xcdeeff, dir:0xffffff, fogDensity:0.014, slippery:true, decor:'crystals' },
+  { id:'lava-core', name:'Lava Core', sky:0x2a0a08, skyBottom:0x150404, fog:0x2a0a08, ground:0x3b1410, accent:0xff5a1f, platform:0x4a2018, ambient:0xff8a4a, dir:0xffb27a, fogDensity:0.03, decor:'volcanic' },
+  { id:'cyber-city', name:'Cyber City', sky:0x0a0a1a, skyBottom:0x1a0a2a, fog:0x0a0a1a, ground:0x14142a, accent:0x00e5ff, platform:0x1c1c3a, ambient:0x8a4aff, dir:0x00e5ff, fogDensity:0.028, decor:'towers' },
+  { id:'space-station', name:'Space Station', sky:0x000000, skyBottom:0x05050f, fog:0x000000, ground:0x2a2a33, accent:0xffffff, platform:0x3a3a44, ambient:0x7a8aff, dir:0xffffff, fogDensity:0.006, lowGravity:true, decor:'stars' },
 ];
 
 const LEVELS_PER_WORLD = 3; // slice shipped in this build (see note in About)
@@ -222,6 +222,8 @@ function generateLevel(worldIdx, lvlIdx){
 
   let cx=0, cy=1, cz=0;
   const chainLen = isBoss ? 10 : (10 + Math.floor(diff*0.6));
+  // each level in a world reads visually different: 0=gentle straight path, 1=wide snaking path
+  const layoutPattern = lvlIdx===0 ? 'straight' : 'zigzag';
 
   if(!isBoss){
     for(let i=0;i<chainLen;i++){
@@ -232,8 +234,13 @@ function generateLevel(worldIdx, lvlIdx){
       const heightVar = lerp(0.4, 2.2, clamp(diff/17,0,1));
       cz += gap + d/2 + 1;
       cy = clamp(cy + (rng()-0.45)*heightVar, 0.4, 10);
-      const nx = cx + (rng()-0.5) * lerp(1,5,clamp(diff/17,0,1));
-      cx = clamp(nx, -8, 8);
+      if(layoutPattern==='zigzag'){
+        const amp = lerp(3, 7, clamp(diff/17,0,1));
+        cx = Math.sin(i*0.7) * amp + (rng()-0.5)*1.2;
+      } else {
+        const nx = cx + (rng()-0.5) * lerp(1,5,clamp(diff/17,0,1));
+        cx = clamp(nx, -8, 8);
+      }
 
       let type='static', extra={};
       const roll = rng();
@@ -341,6 +348,10 @@ class Game {
 
     this._initLights();
     this._initGround();
+    this.skyDome = this._buildSkyDome(0x8fd3f4, 0xdff7c8);
+    this.scene.add(this.skyDome);
+    this.decorGroup = new THREE.Group();
+    this.scene.add(this.decorGroup);
     this.playerMesh = this._buildPlayerMesh();
     this.scene.add(this.playerMesh);
 
@@ -386,6 +397,135 @@ class Game {
     this.groundVoid.position.y = -30;
     this.groundVoid.receiveShadow = true;
     this.scene.add(this.groundVoid);
+  }
+
+  _buildSkyDome(topHex, bottomHex){
+    const geo = new THREE.SphereGeometry(140, 24, 16);
+    const pos = geo.attributes.position;
+    const top = new THREE.Color(topHex), bottom = new THREE.Color(bottomHex);
+    const colors = new Float32Array(pos.count*3);
+    for(let i=0;i<pos.count;i++){
+      const y = pos.getY(i);
+      const t = clamp((y+140)/280, 0, 1);
+      const c = new THREE.Color().lerpColors(bottom, top, t);
+      colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+    const mat = new THREE.MeshBasicMaterial({ vertexColors:true, side:THREE.BackSide, fog:false, depthWrite:false });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = -10;
+    return mesh;
+  }
+
+  _setSkyColors(topHex, bottomHex){
+    const geo = this.skyDome.geometry;
+    const pos = geo.attributes.position;
+    const colorAttr = geo.attributes.color;
+    const top = new THREE.Color(topHex), bottom = new THREE.Color(bottomHex);
+    for(let i=0;i<pos.count;i++){
+      const y = pos.getY(i);
+      const t = clamp((y+140)/280, 0, 1);
+      const c = new THREE.Color().lerpColors(bottom, top, t);
+      colorAttr.setXYZ(i, c.r, c.g, c.b);
+    }
+    colorAttr.needsUpdate = true;
+  }
+
+  _clearDecor(){
+    for(const child of [...this.decorGroup.children]){
+      child.geometry && child.geometry.dispose && child.geometry.dispose();
+      child.material && child.material.dispose && child.material.dispose();
+      this.decorGroup.remove(child);
+    }
+  }
+
+  _buildDecor(worldIdx){
+    this._clearDecor();
+    const w = WORLDS[worldIdx];
+    const rng = mulberry32(worldIdx*777+3);
+    const g = this.decorGroup;
+    const flat = { flatShading:true };
+
+    if(w.decor==='hills'){
+      for(let i=0;i<16;i++){
+        const a = rng()*Math.PI*2, r = 40+rng()*55;
+        const h = 6+rng()*14;
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(6+rng()*6, h, 6), new THREE.MeshStandardMaterial({ color:new THREE.Color(w.accent).lerp(new THREE.Color(w.ground),rng()).getHex(), ...flat }));
+        cone.position.set(Math.cos(a)*r, h/2-4, Math.sin(a)*r);
+        g.add(cone);
+      }
+      for(let i=0;i<10;i++){
+        const cloud = new THREE.Mesh(new THREE.SphereGeometry(3+rng()*3,7,6), new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0.85 }));
+        cloud.position.set((rng()-0.5)*140, 26+rng()*14, (rng()-0.5)*140);
+        g.add(cloud);
+      }
+    } else if(w.decor==='dunes'){
+      for(let i=0;i<18;i++){
+        const a = rng()*Math.PI*2, r = 35+rng()*60;
+        const h = 4+rng()*8;
+        const dune = new THREE.Mesh(new THREE.SphereGeometry(8+rng()*7,8,6,0,Math.PI*2,0,Math.PI/2), new THREE.MeshStandardMaterial({ color:new THREE.Color(w.platform).lerp(new THREE.Color(0xffe6b0),rng()*0.5).getHex(), ...flat }));
+        dune.position.set(Math.cos(a)*r, -4, Math.sin(a)*r);
+        dune.scale.y = h/8;
+        g.add(dune);
+      }
+      const sun = new THREE.Mesh(new THREE.SphereGeometry(9,16,16), new THREE.MeshBasicMaterial({ color:0xfff3c0 }));
+      sun.position.set(-60,45,-90);
+      g.add(sun);
+    } else if(w.decor==='crystals'){
+      for(let i=0;i<20;i++){
+        const a = rng()*Math.PI*2, r = 30+rng()*55;
+        const cryst = new THREE.Mesh(new THREE.OctahedronGeometry(2+rng()*3,0), new THREE.MeshStandardMaterial({ color:0xaeefff, emissive:0x3fa8e0, emissiveIntensity:0.6, metalness:0.6, roughness:0.1, ...flat }));
+        cryst.position.set(Math.cos(a)*r, -2+rng()*20, Math.sin(a)*r);
+        cryst.rotation.set(rng()*Math.PI,rng()*Math.PI,0);
+        g.add(cryst);
+      }
+    } else if(w.decor==='volcanic'){
+      for(let i=0;i<16;i++){
+        const a = rng()*Math.PI*2, r = 32+rng()*50;
+        const h = 8+rng()*16;
+        const rock = new THREE.Mesh(new THREE.ConeGeometry(5+rng()*5,h,5), new THREE.MeshStandardMaterial({ color:0x2a1410, emissive:0xff4400, emissiveIntensity:0.15+rng()*0.25, ...flat }));
+        rock.position.set(Math.cos(a)*r, h/2-4, Math.sin(a)*r);
+        g.add(rock);
+      }
+      for(let i=0;i<24;i++){
+        const ember = new THREE.Mesh(new THREE.SphereGeometry(0.25+rng()*0.25,6,6), new THREE.MeshBasicMaterial({ color:0xff7a2a }));
+        ember.position.set((rng()-0.5)*90,rng()*30-2,(rng()-0.5)*90);
+        ember.userData.driftSpeed = 0.6+rng()*0.8;
+        ember.userData.baseY = ember.position.y;
+        g.add(ember);
+      }
+    } else if(w.decor==='towers'){
+      const grid = new THREE.Mesh(new THREE.PlaneGeometry(300,300,1,1), new THREE.MeshBasicMaterial({ color:0x120a2a }));
+      grid.rotation.x=-Math.PI/2; grid.position.y=-15; g.add(grid);
+      for(let i=0;i<18;i++){
+        const a = rng()*Math.PI*2, r = 26+rng()*60;
+        const h = 14+rng()*40;
+        const tower = new THREE.Mesh(new THREE.BoxGeometry(4+rng()*4,h,4+rng()*4), new THREE.MeshStandardMaterial({ color:0x151530, emissive: (i%2? 0x00e5ff:0xaa4aff), emissiveIntensity:0.35, ...flat }));
+        tower.position.set(Math.cos(a)*r, h/2-15, Math.sin(a)*r);
+        g.add(tower);
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(tower.geometry), new THREE.LineBasicMaterial({ color: i%2? 0x00e5ff:0xaa4aff }));
+        tower.add(edges);
+      }
+    } else if(w.decor==='stars'){
+      const count = 900;
+      const positions = new Float32Array(count*3);
+      for(let i=0;i<count;i++){
+        const r = 60+rng()*75;
+        const theta = rng()*Math.PI*2, phi = Math.acos(2*rng()-1);
+        positions[i*3] = r*Math.sin(phi)*Math.cos(theta);
+        positions[i*3+1] = Math.abs(r*Math.cos(phi))*0.6;
+        positions[i*3+2] = r*Math.sin(phi)*Math.sin(theta);
+      }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+      const stars = new THREE.Points(geo, new THREE.PointsMaterial({ color:0xffffff, size:0.6, sizeAttenuation:true }));
+      g.add(stars);
+      for(let i=0;i<6;i++){
+        const a = rng()*Math.PI*2, r = 45+rng()*40;
+        const planet = new THREE.Mesh(new THREE.SphereGeometry(2+rng()*4,14,10), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(rng(),0.5,0.5).getHex(), emissiveIntensity:0.2, ...flat }));
+        planet.position.set(Math.cos(a)*r, (rng()-0.3)*30, Math.sin(a)*r);
+        g.add(planet);
+      }
+    }
   }
 
   _buildPlayerMesh(){
@@ -459,6 +599,8 @@ class Game {
     this.sun.color.setHex(w.dir);
     this.ambient.color.setHex(w.ambient);
     this.groundVoid.material.color.setHex(new THREE.Color(w.sky).multiplyScalar(0.3).getHex());
+    this._setSkyColors(w.sky, w.skyBottom);
+    if(this._lastDecorWorld !== level.worldIdx){ this._buildDecor(level.worldIdx); this._lastDecorWorld = level.worldIdx; }
 
     for(const p of level.platforms) this._spawnPlatform(p);
     for(const c of level.coins) this._spawnCoin(c);
@@ -502,9 +644,20 @@ class Game {
     if(def.start) color = 0x66e07a;
     if(def.end) color = 0xffd54a;
     const geo = new THREE.BoxGeometry(def.w, def.h, def.d);
-    const mesh = new THREE.Mesh(geo, this._platMat(color, { emissive: def.end?0x664400:0x000000, emissiveIntensity:0.4 }));
+    const neonWorld = w.decor==='towers' || w.decor==='stars' || w.decor==='volcanic';
+    const mat = this._platMat(color, {
+      emissive: def.end?0x664400: (neonWorld?w.accent:0x000000),
+      emissiveIntensity: def.end?0.4:(neonWorld?0.25:0.4),
+      metalness: w.decor==='crystals'?0.55:0.15,
+      roughness: w.decor==='crystals'?0.1:0.6,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(def.x, def.y, def.z);
     mesh.receiveShadow = true; mesh.castShadow = false;
+    if(neonWorld && !def.start){
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color:w.accent }));
+      mesh.add(edges);
+    }
     this.scene.add(mesh);
     const state = { basePos: mesh.position.clone(), t: (def.phase||0), fallen:false, fallTimer:0, standing:false, prevPos: mesh.position.clone() };
     this.dynamicMeshes.push({ mesh, def, state });
@@ -615,6 +768,7 @@ class Game {
     this._checkPortal();
     this._updateCamera(dt);
     this._animateCollectibles(dt);
+    this._animateDecor(dt);
 
     this.playerMesh.position.copy(this.pos);
     const speed = Math.hypot(this.vel.x,this.vel.z);
@@ -879,6 +1033,20 @@ class Game {
     for(const o of this.orbMeshes) if(!o.taken){ o.mesh.rotation.y = t*1.5; o.mesh.position.y = o.def.y+Math.sin(t*2+o.def.x)*0.12; }
     for(const pu of this.powerupMeshes) if(!pu.taken){ pu.mesh.rotation.y = t*2.2; pu.mesh.rotation.x = t*1.3; }
     if(this.portalMesh) this.portalMesh.rotation.y = t*0.6;
+  }
+
+  _animateDecor(dt){
+    // distant backdrop follows the player horizontally only, like a skybox, so it never gets "left behind"
+    this.decorGroup.position.set(this.pos.x, 0, this.pos.z);
+    this.skyDome.position.set(this.pos.x, 0, this.pos.z);
+    for(const child of this.decorGroup.children){
+      if(child.userData.driftSpeed){
+        const rise = (this.elapsed*child.userData.driftSpeed*2) % 26;
+        child.position.y = child.userData.baseY + rise + Math.sin(this.elapsed*2+child.position.x)*0.6;
+      } else if(child.geometry && child.geometry.type==='OctahedronGeometry'){
+        child.rotation.y += dt*0.4;
+      }
+    }
   }
 
   _spawnJumpParticles(){
